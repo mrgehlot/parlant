@@ -332,11 +332,11 @@ EventCreationUTCField: TypeAlias = Annotated[
 ]
 
 
-EventCorrelationIdField: TypeAlias = Annotated[
+EventTraceIdField: TypeAlias = Annotated[
     str,
     Field(
         description="ID linking related events together",
-        examples=["corr_13xyz"],
+        examples=["trace_13xyz"],
     ),
 ]
 
@@ -346,7 +346,7 @@ event_example: ExampleJson = {
     "kind": "message",
     "offset": 0,
     "creation_utc": "2024-03-24T12:00:00Z",
-    "correlation_id": "corr_13xyz",
+    "trace_id": "corr_13xyz",
     "data": {
         "message": "Hello, I need help with my account",
         "participant": {"id": "cust_123xy", "display_name": "John Doe"},
@@ -365,7 +365,7 @@ class EventDTO(
     kind: EventKindDTO
     offset: EventOffsetField
     creation_utc: EventCreationUTCField
-    correlation_id: EventCorrelationIdField
+    trace_id: EventTraceIdField
     data: JSONSerializableDTO
     deleted: bool
 
@@ -990,7 +990,7 @@ def event_to_dto(event: Event) -> EventDTO:
         kind=_event_kind_to_event_kind_dto(event.kind),
         offset=event.offset,
         creation_utc=event.creation_utc,
-        correlation_id=event.correlation_id,
+        trace_id=event.trace_id,
         data=cast(JSONSerializableDTO, event.data),
         deleted=event.deleted,
     )
@@ -1125,7 +1125,7 @@ MinOffsetQuery: TypeAlias = Annotated[
     ),
 ]
 
-CorrelationIdQuery: TypeAlias = Annotated[
+TraceIdQuery: TypeAlias = Annotated[
     str,
     Query(
         description="ID linking related events together",
@@ -1682,7 +1682,7 @@ def create_router(
             kind=_event_kind_to_event_kind_dto(event.kind),
             offset=event.offset,
             creation_utc=event.creation_utc,
-            correlation_id=event.correlation_id,
+            trace_id=event.trace_id,
             data=cast(JSONSerializableDTO, event.data),
             deleted=event.deleted,
         )
@@ -1711,7 +1711,7 @@ def create_router(
             kind=_event_kind_to_event_kind_dto(event.kind),
             offset=event.offset,
             creation_utc=event.creation_utc,
-            correlation_id=event.correlation_id,
+            trace_id=event.trace_id,
             data=cast(JSONSerializableDTO, event.data),
             deleted=event.deleted,
         )
@@ -1742,14 +1742,14 @@ def create_router(
         session_id: SessionIdPath,
         min_offset: MinOffsetQuery | None = None,
         source: EventSourceDTO | None = None,
-        correlation_id: CorrelationIdQuery | None = None,
+        correlation_id: TraceIdQuery | None = None,
         kinds: KindsQuery | None = None,
         wait_for_data: int = 60,
     ) -> Sequence[EventDTO]:
         """Lists events from a session with optional filtering and waiting capabilities.
 
         This endpoint retrieves events from a specified session and can:
-        1. Filter events by their offset, source, type, and correlation ID
+        1. Filter events by their offset, source, type, and trace ID
         2. Wait for new events to arrive if requested
         3. Return events in chronological order based on their offset
 
@@ -1777,7 +1777,7 @@ def create_router(
                 min_offset=min_offset or 0,
                 source=event_source,
                 kinds=kind_list,
-                correlation_id=correlation_id,
+                trace_id=trace_id,
                 timeout=Timeout(wait_for_data),
             ):
                 raise HTTPException(
@@ -1790,7 +1790,7 @@ def create_router(
             min_offset=min_offset or 0,
             source=event_source,
             kinds=kind_list,
-            correlation_id=correlation_id,
+            trace_id=trace_id,
         )
 
         return [
@@ -1800,7 +1800,7 @@ def create_router(
                 kind=_event_kind_to_event_kind_dto(e.kind),
                 offset=e.offset,
                 creation_utc=e.creation_utc,
-                correlation_id=e.correlation_id,
+                trace_id=e.trace_id,
                 data=cast(JSONSerializableDTO, e.data),
                 deleted=e.deleted,
             )
