@@ -24,6 +24,7 @@ from pydantic import ValidationError
 
 from parlant.adapters.nlp.common import normalize_json_output
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder
+from parlant.core.meter import Meter
 from parlant.core.nlp.policies import policy, retry
 from parlant.core.nlp.tokenization import EstimatingTokenizer
 from parlant.core.nlp.moderation import ModerationService, NoModeration
@@ -78,9 +79,11 @@ class GeminiSchematicGenerator(SchematicGenerator[T]):
         self,
         model_name: str,
         logger: Logger,
+        meter: Meter,
     ) -> None:
         self.model_name = model_name
         self._logger = logger
+        self._meter = meter
 
         self._client = google.genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
 
@@ -110,6 +113,22 @@ class GeminiSchematicGenerator(SchematicGenerator[T]):
     )
     @override
     async def generate(
+        self,
+        prompt: str | PromptBuilder,
+        hints: Mapping[str, Any] = {},
+    ) -> SchematicGenerationResult[T]:
+        with self._logger.scope(f"Gemini LLM Request ({self.schema.__name__})"):
+            async with self._meter.measure(
+                "llm_request",
+                {
+                    "service.name": "gemini",
+                    "model.name": self.model_name,
+                    "schema.name": self.schema.__name__,
+                },
+            ):
+                return await self._do_generate(prompt, hints)
+
+    async def _do_generate(
         self,
         prompt: str | PromptBuilder,
         hints: Mapping[str, Any] = {},
@@ -191,10 +210,11 @@ class GeminiSchematicGenerator(SchematicGenerator[T]):
 
 
 class Gemini_1_5_Flash(GeminiSchematicGenerator[T]):
-    def __init__(self, logger: Logger) -> None:
+    def __init__(self, logger: Logger, meter: Meter) -> None:
         super().__init__(
             model_name="gemini-1.5-flash",
             logger=logger,
+            meter=meter,
         )
 
     @property
@@ -204,10 +224,11 @@ class Gemini_1_5_Flash(GeminiSchematicGenerator[T]):
 
 
 class Gemini_2_0_Flash(GeminiSchematicGenerator[T]):
-    def __init__(self, logger: Logger) -> None:
+    def __init__(self, logger: Logger, meter: Meter) -> None:
         super().__init__(
             model_name="gemini-2.0-flash",
             logger=logger,
+            meter=meter,
         )
 
     @property
@@ -217,10 +238,11 @@ class Gemini_2_0_Flash(GeminiSchematicGenerator[T]):
 
 
 class Gemini_2_0_Flash_Lite(GeminiSchematicGenerator[T]):
-    def __init__(self, logger: Logger) -> None:
+    def __init__(self, logger: Logger, meter: Meter) -> None:
         super().__init__(
             model_name="gemini-2.0-flash-lite-preview-02-05",
             logger=logger,
+            meter=meter,
         )
 
     @property
@@ -230,10 +252,11 @@ class Gemini_2_0_Flash_Lite(GeminiSchematicGenerator[T]):
 
 
 class Gemini_1_5_Pro(GeminiSchematicGenerator[T]):
-    def __init__(self, logger: Logger) -> None:
+    def __init__(self, logger: Logger, meter: Meter) -> None:
         super().__init__(
             model_name="gemini-1.5-pro",
             logger=logger,
+            meter=meter,
         )
 
     @property
@@ -243,10 +266,11 @@ class Gemini_1_5_Pro(GeminiSchematicGenerator[T]):
 
 
 class Gemini_2_5_Flash(GeminiSchematicGenerator[T]):
-    def __init__(self, logger: Logger) -> None:
+    def __init__(self, logger: Logger, meter: Meter) -> None:
         super().__init__(
             model_name="gemini-2.5-flash",
             logger=logger,
+            meter=meter,
         )
 
     @override
@@ -267,10 +291,11 @@ class Gemini_2_5_Flash(GeminiSchematicGenerator[T]):
 
 
 class Gemini_2_5_Pro(GeminiSchematicGenerator[T]):
-    def __init__(self, logger: Logger) -> None:
+    def __init__(self, logger: Logger, meter: Meter) -> None:
         super().__init__(
             model_name="gemini-2.5-pro",
             logger=logger,
+            meter=meter,
         )
 
     @property
@@ -282,10 +307,12 @@ class Gemini_2_5_Pro(GeminiSchematicGenerator[T]):
 class GoogleEmbedder(Embedder):
     supported_hints = ["title", "task_type"]
 
-    def __init__(self, model_name: str, logger: Logger) -> None:
+    def __init__(self, model_name: str, logger: Logger, meter: Meter) -> None:
         self.model_name = model_name
 
         self._logger = logger
+        self._meter = meter
+
         self._client = google.genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
         self._tokenizer = GoogleEstimatingTokenizer(client=self._client, model_name=self.model_name)
 
@@ -320,7 +347,13 @@ class GoogleEmbedder(Embedder):
         gemini_api_arguments = {k: v for k, v in hints.items() if k in self.supported_hints}
 
         try:
-            with self._logger.operation("Embedding text with gemini"):
+            async with self._meter.measure(
+                "embed",
+                {
+                    "service.name": "gemini",
+                    "embedding.model.name": self.model_name,
+                },
+            ):
                 response = await self._client.aio.models.embed_content(  # type: ignore
                     model=self.model_name,
                     contents=texts,  # type: ignore
@@ -349,8 +382,12 @@ class GoogleEmbedder(Embedder):
 
 
 class GeminiTextEmbedding_004(GoogleEmbedder):
-    def __init__(self, logger: Logger) -> None:
-        super().__init__(model_name="text-embedding-004", logger=logger)
+    def __init__(self, logger: Logger, meter: Meter) -> None:
+        super().__init__(
+            model_name="text-embedding-004",
+            logger=logger,
+            meter=meter,
+        )
 
     @property
     @override
