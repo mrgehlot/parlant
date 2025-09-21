@@ -180,6 +180,30 @@ class GeminiSchematicGenerator(SchematicGenerator[T]):
         try:
             model_content = self.schema.model_validate(json_object)
 
+            await self._meter.increment(
+                "input_tokens",
+                response.usage_metadata.prompt_token_count or 0 if response.usage_metadata else 0,
+                {"model_name": self.model_name},
+            )
+            await self._meter.increment(
+                "output_tokens",
+                response.usage_metadata.candidates_token_count or 0
+                if response.usage_metadata
+                else 0,
+                {
+                    "model_name": self.model_name,
+                },
+            )
+            await self._meter.increment(
+                "cached_input_tokens",
+                response.usage_metadata.cached_content_token_count or 0
+                if response.usage_metadata
+                else 0,
+                {
+                    "model_name": self.model_name,
+                },
+            )
+
             return SchematicGenerationResult(
                 content=model_content,
                 info=GenerationInfo(
@@ -191,7 +215,7 @@ class GeminiSchematicGenerator(SchematicGenerator[T]):
                         output_tokens=response.usage_metadata.candidates_token_count or 0,
                         extra={
                             "cached_input_tokens": (
-                                response.usage_metadata.cached_content_token_count
+                                response.usage_metadata.cached_content_token_count or 0
                                 if response.usage_metadata
                                 else 0
                             )
