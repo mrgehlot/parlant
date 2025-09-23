@@ -391,7 +391,7 @@ Please set TOGETHER_API_KEY in your environment before running Parlant.
 
     @override
     async def get_schematic_generator(self, t: type[T]) -> TogetherAISchematicGenerator[T]:
-        return Llama3_3_70B[t](self._logger)  # type: ignore
+        return Llama3_3_70B[t](self._logger, self._meter)  # type: ignore
 
     @override
     async def get_embedder(self) -> Embedder:

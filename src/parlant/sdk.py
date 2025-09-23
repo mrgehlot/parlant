@@ -96,6 +96,7 @@ from parlant.core.context_variables import (
     ContextVariableId,
     ContextVariableStore,
 )
+from parlant.core.meter import Meter
 from parlant.core.tracer import Tracer
 from parlant.core.customers import (
     Customer as _Customer,
@@ -247,7 +248,7 @@ class NLPServices:
         if error := AzureService.verify_environment():
             raise SDKError(error)
 
-        return AzureService(container[Logger])
+        return AzureService(container[Logger], container[Meter])
 
     @staticmethod
     def openai(container: Container) -> NLPService:
@@ -257,7 +258,7 @@ class NLPServices:
         if error := OpenAIService.verify_environment():
             raise SDKError(error)
 
-        return OpenAIService(container[Logger])
+        return OpenAIService(container[Logger], container[Meter])
 
     @staticmethod
     def anthropic(container: Container) -> NLPService:
@@ -267,7 +268,7 @@ class NLPServices:
         if error := AnthropicService.verify_environment():
             raise SDKError(error)
 
-        return AnthropicService(container[Logger])
+        return AnthropicService(container[Logger], container[Meter])
 
     @staticmethod
     def cerebras(container: Container) -> NLPService:
@@ -277,7 +278,7 @@ class NLPServices:
         if error := CerebrasService.verify_environment():
             raise SDKError(error)
 
-        return CerebrasService(container[Logger])
+        return CerebrasService(container[Logger], container[Meter])
 
     @staticmethod
     def together(container: Container) -> NLPService:
@@ -287,7 +288,7 @@ class NLPServices:
         if error := TogetherService.verify_environment():
             raise SDKError(error)
 
-        return TogetherService(container[Logger])
+        return TogetherService(container[Logger], container[Meter])
 
     @staticmethod
     def gemini(container: Container) -> NLPService:
@@ -297,7 +298,7 @@ class NLPServices:
         if error := GeminiService.verify_environment():
             raise SDKError(error)
 
-        return GeminiService(container[Logger])
+        return GeminiService(container[Logger], container[Meter])
 
     @staticmethod
     def litellm(container: Container) -> NLPService:
@@ -307,7 +308,7 @@ class NLPServices:
         if error := LiteLLMService.verify_environment():
             raise SDKError(error)
 
-        return LiteLLMService(container[Logger])
+        return LiteLLMService(container[Logger], container[Meter])
 
     @staticmethod
     def vertex(container: Container) -> NLPService:
@@ -320,7 +321,7 @@ class NLPServices:
         if err := VertexAIService.validate_adc():
             raise SDKError(err)
 
-        return VertexAIService(container[Logger])
+        return VertexAIService(container[Logger], container[Meter])
 
     @staticmethod
     def ollama(container: Container) -> NLPService:
@@ -333,7 +334,7 @@ class NLPServices:
         if err := OllamaService.verify_models():
             raise SDKError(err)
 
-        return OllamaService(container[Logger])
+        return OllamaService(container[Logger], container[Meter])
 
     @staticmethod
     def glm(container: Container) -> NLPService:
@@ -343,7 +344,7 @@ class NLPServices:
         if error := GLMService.verify_environment():
             raise SDKError(error)
 
-        return GLMService(container[Logger])
+        return GLMService(container[Logger], container[Meter])
 
     @staticmethod
     def qwen(container: Container) -> NLPService:
@@ -373,7 +374,7 @@ class NLPServices:
         if error := SnowflakeCortexService.verify_environment():
             raise SDKError(error)
 
-        return SnowflakeCortexService(container[Logger])
+        return SnowflakeCortexService(container[Logger], container[Meter])
 
     @staticmethod
     def fireworks(container: Container) -> NLPService:
