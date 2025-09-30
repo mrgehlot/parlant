@@ -384,7 +384,7 @@ class NLPServices:
         if error := FireworksService.verify_environment():
             raise SDKError(error)
 
-        return FireworksService(container[Logger])
+        return FireworksService(container[Logger], container[Meter])
 
 
 class _CachedGuidelineEvaluation(TypedDict, total=False):
