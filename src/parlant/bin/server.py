@@ -44,6 +44,7 @@ import uvicorn
 from parlant.adapters.loggers.opentelemetry import OtelLogger
 from parlant.adapters.loggers.websocket import WebSocketLogger
 from parlant.adapters.meter.opentelemetry import OtelMeter
+from parlant.adapters.tracing.opentelemetry import OtelTracer
 from parlant.api.authorization import (
     AuthorizationPolicy,
     DevelopmentAuthorizationPolicy,
@@ -243,9 +244,7 @@ sys.path.append(PARLANT_HOME_DIR.as_posix())
 sys.path.append(".")
 
 TRACER = LocalTracer()
-
 LOGGER = FileLogger(PARLANT_HOME_DIR / "parlant.log", TRACER, LogLevel.INFO)
-
 BACKGROUND_TASK_SERVICE = BackgroundTaskService(LOGGER)
 
 
@@ -432,6 +431,14 @@ async def _define_logger(container: Container) -> None:
         container[Logger] = CompositeLogger([LOGGER, container[WebSocketLogger]])
 
 
+async def _define_tracer(container: Container) -> None:
+    if OtelTracer.is_environment_set():
+        container[Tracer] = await EXIT_STACK.enter_async_context(OtelTracer())
+
+    else:
+        container[Tracer] = Singleton(LocalTracer)
+
+
 async def _define_meter(container: Container) -> None:
     if OtelMeter.is_environment_set():
         container[Meter] = await EXIT_STACK.enter_async_context(OtelMeter())
@@ -478,13 +485,13 @@ def _define_singleton_value(container: Container, interface: type, implementatio
 async def setup_container() -> AsyncIterator[Container]:
     c = Container()
 
-    c[BackgroundTaskService] = BACKGROUND_TASK_SERVICE
-    c[Tracer] = TRACER
-    web_socket_logger = WebSocketLogger(TRACER, LogLevel.INFO)
+    await _define_tracer(c)
+    web_socket_logger = WebSocketLogger(c[Tracer], LogLevel.INFO)
     c[WebSocketLogger] = web_socket_logger
 
     await _define_logger(c)
     await _define_meter(c)
+    _define_singleton(c, BackgroundTaskService, BackgroundTaskService)
 
     _define_singleton(c, IdGenerator, IdGenerator)
 
