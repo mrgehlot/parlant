@@ -22,7 +22,7 @@ from typing_extensions import override
 import jsonfinder  # type: ignore
 from pydantic import ValidationError
 
-from parlant.adapters.nlp.common import normalize_json_output
+from parlant.adapters.nlp.common import normalize_json_output, record_llm_metrics
 from parlant.core.engines.alpha.prompt_builder import PromptBuilder
 from parlant.core.meter import Meter
 from parlant.core.nlp.policies import policy, retry
@@ -180,28 +180,18 @@ class GeminiSchematicGenerator(SchematicGenerator[T]):
         try:
             model_content = self.schema.model_validate(json_object)
 
-            await self._meter.increment(
-                "input_tokens",
-                response.usage_metadata.prompt_token_count or 0 if response.usage_metadata else 0,
-                {"model_name": self.model_name},
-            )
-            await self._meter.increment(
-                "output_tokens",
-                response.usage_metadata.candidates_token_count or 0
+            await record_llm_metrics(
+                self._meter,
+                self.model_name,
+                input_tokens=response.usage_metadata.prompt_token_count or 0
                 if response.usage_metadata
                 else 0,
-                {
-                    "model_name": self.model_name,
-                },
-            )
-            await self._meter.increment(
-                "cached_input_tokens",
-                response.usage_metadata.cached_content_token_count or 0
+                output_tokens=response.usage_metadata.candidates_token_count or 0
                 if response.usage_metadata
                 else 0,
-                {
-                    "model_name": self.model_name,
-                },
+                cached_input_tokens=response.usage_metadata.cached_content_token_count or 0
+                if response.usage_metadata
+                else 0,
             )
 
             return SchematicGenerationResult(
