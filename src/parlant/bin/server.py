@@ -420,6 +420,7 @@ async def load_modules(
 
 async def _define_logger(container: Container) -> None:
     if OtelLogger.is_environment_set():
+        print("OpenTelemetry logging is enabled.")
         container[Logger] = CompositeLogger(
             [
                 await EXIT_STACK.enter_async_context(OtelLogger(TRACER)),
@@ -433,6 +434,7 @@ async def _define_logger(container: Container) -> None:
 
 async def _define_tracer(container: Container) -> None:
     if OtelTracer.is_environment_set():
+        print("OpenTelemetry tracing is enabled.")
         container[Tracer] = await EXIT_STACK.enter_async_context(OtelTracer())
 
     else:
@@ -441,6 +443,7 @@ async def _define_tracer(container: Container) -> None:
 
 async def _define_meter(container: Container) -> None:
     if OtelMeter.is_environment_set():
+        print("OpenTelemetry metrics is enabled.")
         container[Meter] = await EXIT_STACK.enter_async_context(OtelMeter())
 
     else:
