@@ -174,6 +174,14 @@ SessionModeField: TypeAlias = Annotated[
     ),
 ]
 
+SessionMetadataField: TypeAlias = Annotated[
+    Mapping[str, JSONSerializableDTO],
+    Field(
+        description="Metadata for the session",
+        examples=[{"simulation": True, "priority": "high"}],
+    ),
+]
+
 
 session_example: ExampleJson = {
     "id": "sess_123yz",
@@ -183,6 +191,7 @@ session_example: ExampleJson = {
     "title": "Product inquiry session",
     "mode": "auto",
     "consumption_offsets": consumption_offsets_example,
+    "metadata": {"simulation": True, "priority": "high"},
 }
 
 
@@ -199,6 +208,7 @@ class SessionDTO(
     title: SessionTitleField | None = None
     mode: SessionModeField
     consumption_offsets: ConsumptionOffsetsDTO
+    metadata: SessionMetadataField
 
 
 SessionCreationParamsCustomerIdField: TypeAlias = Annotated[
@@ -215,6 +225,7 @@ session_creation_params_example: ExampleJson = {
     "agent_id": "ag_123xyz",
     "customer_id": "cust_123xy",
     "title": "Product inquiry session",
+    "metadata": {"project": "demo", "priority": "high"},
 }
 
 
@@ -227,6 +238,7 @@ class SessionCreationParamsDTO(
     agent_id: SessionAgentIdPath
     customer_id: SessionCreationParamsCustomerIdField = None
     title: SessionTitleField | None = None
+    metadata: SessionMetadataField | None = None
 
 
 message_example = "Hello, I need help with my order"
@@ -379,9 +391,40 @@ class ConsumptionOffsetsUpdateParamsDTO(
     client: ConsumptionOffsetClientField | None = None
 
 
+SessionMetadataUnsetField: TypeAlias = Annotated[
+    Sequence[str],
+    Field(
+        description="Metadata keys to remove from the session",
+        examples=[["simulation", "priority"]],
+    ),
+]
+
+session_metadata_update_params_example: ExampleJson = {
+    "set": {
+        "simulation": False,
+        "priority": "low",
+    },
+    "unset": ["simulation", "priority"],
+}
+
+
+class SessionMetadataUpdateParamsDTO(
+    DefaultBaseModel,
+    json_schema_extra={"example": session_metadata_update_params_example},
+):
+    """Parameters for updating a session's metadata."""
+
+    set: SessionMetadataField | None = None
+    unset: SessionMetadataUnsetField | None = None
+
+
 session_update_params_example: ExampleJson = {
     "title": "Updated session title",
     "consumption_offsets": {"client": 42},
+    "metadata": {
+        "set": {"simulation": True, "priority": "low"},
+        "unset": ["old_project"],
+    },
 }
 
 
@@ -396,6 +439,7 @@ class SessionUpdateParamsDTO(
     mode: SessionModeField | None = None
     customer_id: CustomerId | None = None
     agent_id: AgentId | None = None
+    metadata: SessionMetadataUpdateParamsDTO | None = None
 
 
 ToolResultDataField: TypeAlias = Annotated[
@@ -1274,6 +1318,7 @@ def create_router(
             agent_id=params.agent_id,
             title=params.title,
             allow_greeting=allow_greeting,
+            metadata=params.metadata or {},
         )
 
         return SessionDTO(
@@ -1284,6 +1329,7 @@ def create_router(
             consumption_offsets=ConsumptionOffsetsDTO(client=session.consumption_offsets["client"]),
             title=session.title,
             mode=SessionModeDTO(session.mode),
+            metadata=session.metadata,
         )
 
     @router.get(
@@ -1318,6 +1364,7 @@ def create_router(
                 client=session.consumption_offsets["client"],
             ),
             mode=SessionModeDTO(session.mode),
+            metadata=session.metadata,
         )
 
     @router.get(
@@ -1362,6 +1409,7 @@ def create_router(
                     client=s.consumption_offsets["client"],
                 ),
                 mode=SessionModeDTO(s.mode),
+                metadata=s.metadata,
             )
             for s in sessions
         ]
@@ -1466,6 +1514,19 @@ def create_router(
             if dto.agent_id:
                 params["agent_id"] = dto.agent_id
 
+            if dto.metadata:
+                session = await app.sessions.read(session_id)
+                current_metadata = dict(session.metadata)
+
+                if dto.metadata.set:
+                    current_metadata.update(dto.metadata.set)
+
+                if dto.metadata.unset:
+                    for key in dto.metadata.unset:
+                        current_metadata.pop(key, None)
+
+                params["metadata"] = current_metadata
+
             return params
 
         session = await app.sessions.update(session_id=session_id, params=await from_dto(params))
@@ -1480,6 +1541,7 @@ def create_router(
                 client=session.consumption_offsets["client"],
             ),
             mode=SessionModeDTO(session.mode),
+            metadata=session.metadata,
         )
 
     @router.post(
