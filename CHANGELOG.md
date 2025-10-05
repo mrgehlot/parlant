@@ -12,6 +12,7 @@ All notable changes to Parlant will be documented here.
 - Support proxy URL for LiteLLM
 - Allow controlling max tool result payload via environment variable
 - Follow-up canned responses
+- Add Fireworks service
 - Rename ContextualCorrelator to Tracer
 - Add OpenTelemetry integration for Meter, Logger and Tracer
 
