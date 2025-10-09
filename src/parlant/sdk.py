@@ -97,7 +97,7 @@ from parlant.core.context_variables import (
     ContextVariableStore,
 )
 from parlant.core.meter import Meter
-from parlant.core.tracer import Tracer
+from parlant.core.tracer import Tracer, ContextualCorrelator
 from parlant.core.customers import (
     Customer as _Customer,
     CustomerDocumentStore,
@@ -1673,6 +1673,13 @@ class RetrieverContext:
     variables: Mapping[Variable, JSONSerializable]
     interaction: Interaction
 
+    @property
+    def correlator(self) -> Tracer:
+        self.logger.warning(
+            "`correlator` is deprecated. Please change your code to use the `tracer` property"
+        )
+        return self.tracer
+
 
 @dataclass(frozen=True)
 class RetrieverResult:
@@ -3117,6 +3124,7 @@ __all__ = [
     "CustomerId",
     "Variable",
     "ContextVariableId",
+    "ContextualCorrelator",
     "ControlOptions",
     "Embedder",
     "EmbedderFactory",
